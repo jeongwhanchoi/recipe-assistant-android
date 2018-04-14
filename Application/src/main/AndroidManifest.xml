@@ -15,7 +15,7 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.android.wearable.recipeassistant" >
+    package="com.jeongwhanchoi.recipeassistant" >
 
     <uses-sdk android:minSdkVersion="18"
               android:targetSdkVersion="23" />
@@ -26,7 +26,7 @@
         android:label="@string/app_name"
         android:theme="@android:style/Theme.Holo.Light" >
         <activity
-            android:name=".MainActivity"
+            android:name="com.jeongwhanchoi.recipeassistant.MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,11 +34,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".RecipeActivity"
+            android:name="com.jeongwhanchoi.recipeassistant.RecipeActivity"
             android:label="@string/app_name" >
         </activity>
         <service
-            android:name=".RecipeService" />
+            android:name="com.jeongwhanchoi.recipeassistant.RecipeService" />
     </application>
 
 </manifest>

@@ -16,159 +16,294 @@
 
 package com.jeongwhanchoi.recipeassistant;
 
-import android.content.Context;
-import android.database.DataSetObserver;
-import android.graphics.Bitmap;
-import android.util.Log;
+import android.content.res.TypedArray;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
-import android.widget.ListAdapter;
 import android.widget.TextView;
 
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.nostra13.universalimageloader.core.DisplayImageOptions;
+import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.display.SimpleBitmapDisplayer;
+import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class RecipeListAdapter implements ListAdapter {
-    private String TAG = "RecipeListAdapter";
+public class RecipeListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private class Item {
-        String title;
-        String name;
-        String summary;
-        Bitmap image;
+    private static final int VIEW_TYPE_RECIPE = 1;
+    private static final int VIEW_TYPE_FOOTER = 2;
+
+    private List<RecipeModel> mRecipeList;
+    private List<Object> mFooterList;
+    private RecipeViewHolder.OnItemClickListener mListener;
+    private int mGridSpanCount;
+    private boolean mAnimationEnabled = true;
+    private int mAnimationPosition = -1;
+    private ImageLoader mImageLoader = ImageLoader.getInstance();
+    private DisplayImageOptions mDisplayImageOptions;
+    private ImageLoadingListener mImageLoadingListener;
+
+    public RecipeListAdapter(List<RecipeModel> recipeList, List<Object> footerList, RecipeViewHolder.OnItemClickListener listener, int gridSpanCount)
+    {
+        mRecipeList = recipeList;
+        mFooterList = footerList;
+        mListener = listener;
+        mGridSpanCount = gridSpanCount;
+        setupImageLoader();
     }
 
-    private List<Item> mItems = new ArrayList<Item>();
-    private Context mContext;
-    private DataSetObserver mObserver;
+    @Override
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType)
+    {
+        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
 
-    public RecipeListAdapter(Context context) {
-        mContext = context;
-        loadRecipeList();
-    }
-
-    private void loadRecipeList() {
-        JSONObject jsonObject = AssetUtils.loadJSONAsset(mContext, Constants.RECIPE_LIST_FILE);
-        if (jsonObject != null) {
-            List<Item> items = parseJson(jsonObject);
-            appendItemsToList(items);
+        // inflate view and create view holder
+        if(viewType == VIEW_TYPE_RECIPE)
+        {
+            View view = inflater.inflate(R.layout.fragment_recipe_list_item, parent, false);
+            return new RecipeViewHolder(view, mListener, mImageLoader, mDisplayImageOptions, mImageLoadingListener);
+        }
+        else if(viewType == VIEW_TYPE_FOOTER)
+        {
+            View view = inflater.inflate(R.layout.fragment_recipe_list_footer, parent, false);
+            return new FooterViewHolder(view);
+        }
+        else
+        {
+            throw new RuntimeException("There is no view type that matches the type " + viewType);
         }
     }
 
-    private List<Item> parseJson(JSONObject json) {
-        List<Item> result = new ArrayList<Item>();
-        try {
-            JSONArray items = json.getJSONArray(Constants.RECIPE_FIELD_LIST);
-            for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.getJSONObject(i);
-                Item parsed = new Item();
-                parsed.name = item.getString(Constants.RECIPE_FIELD_NAME);
-                parsed.title = item.getString(Constants.RECIPE_FIELD_TITLE);
-                if (item.has(Constants.RECIPE_FIELD_IMAGE)) {
-                    String imageFile = item.getString(Constants.RECIPE_FIELD_IMAGE);
-                    parsed.image = AssetUtils.loadBitmapAsset(mContext, imageFile);
-                }
-                parsed.summary = item.getString(Constants.RECIPE_FIELD_SUMMARY);
-                result.add(parsed);
+    @Override
+    public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, int position)
+    {
+        // bind data
+        if(viewHolder instanceof RecipeViewHolder)
+        {
+            // entity
+            RecipeModel recipe = mRecipeList.get(getRecipePosition(position));
+
+            // bind data
+            if(recipe != null)
+            {
+                ((RecipeViewHolder) viewHolder).bindData(recipe);
             }
-        } catch (JSONException e) {
-            Log.e(TAG, "Failed to parse recipe list: " + e);
         }
-        return result;
-    }
+        else if(viewHolder instanceof FooterViewHolder)
+        {
+            // entity
+            Object object = mFooterList.get(getFooterPosition(position));
 
-    private void appendItemsToList(List<Item> items) {
-        mItems.addAll(items);
-        if (mObserver != null) {
-            mObserver.onChanged();
+            // bind data
+            if(object != null)
+            {
+                ((FooterViewHolder) viewHolder).bindData(object);
+            }
         }
+
+        // set item margins
+        setItemMargins(viewHolder.itemView, position);
+
+        // set animation
+        setAnimation(viewHolder.itemView, position);
     }
 
     @Override
-    public int getCount() {
-        return mItems.size();
+    public int getItemCount()
+    {
+        int size = 0;
+        if(mRecipeList != null) size += mRecipeList.size();
+        if(mFooterList != null) size += mFooterList.size();
+        return size;
     }
 
-    @Override
-    public Object getItem(int position) {
-        return mItems.get(position);
-    }
 
     @Override
-    public long getItemId(int position) {
+    public int getItemViewType(int position)
+    {
+        int recipes = mRecipeList.size();
+        int footers = mFooterList.size();
+
+        if(position < recipes) return VIEW_TYPE_RECIPE;
+        else if(position < recipes + footers) return VIEW_TYPE_FOOTER;
+        else return -1;
+    }
+
+
+    public int getRecipeCount()
+    {
+        if(mRecipeList != null) return mRecipeList.size();
         return 0;
     }
 
-    @Override
-    public int getItemViewType(int position) {
+
+    public int getFooterCount()
+    {
+        if(mFooterList != null) return mFooterList.size();
         return 0;
     }
 
-    @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        View view = convertView;
-        if (view == null) {
-            LayoutInflater inf = LayoutInflater.from(mContext);
-            view = inf.inflate(R.layout.list_item, null);
+
+    public int getRecipePosition(int recyclerPosition)
+    {
+        return recyclerPosition;
+    }
+
+
+    public int getFooterPosition(int recyclerPosition)
+    {
+        return recyclerPosition - getRecipeCount();
+    }
+
+
+    public int getRecyclerPositionByRecipe(int recipePosition)
+    {
+        return recipePosition;
+    }
+
+
+    public int getRecyclerPositionByFooter(int footerPosition)
+    {
+        return footerPosition + getRecipeCount();
+    }
+
+
+    public void refill(List<RecipeModel> recipeList, List<Object> footerList, RecipeViewHolder.OnItemClickListener listener, int gridSpanCount)
+    {
+        mRecipeList = recipeList;
+        mFooterList = footerList;
+        mListener = listener;
+        mGridSpanCount = gridSpanCount;
+        notifyDataSetChanged();
+    }
+
+
+    public void stop()
+    {
+    }
+
+
+    public void setAnimationEnabled(boolean animationEnabled)
+    {
+        mAnimationEnabled = animationEnabled;
+    }
+
+
+    private void setupImageLoader()
+    {
+        mDisplayImageOptions = new DisplayImageOptions.Builder()
+                .showImageOnLoading(android.R.color.transparent)
+                .showImageForEmptyUri(R.drawable.placeholder_photo)
+                .showImageOnFail(R.drawable.placeholder_photo)
+                .cacheInMemory(true)
+                .cacheOnDisk(true)
+                .displayer(new SimpleBitmapDisplayer())
+                .build();
+        mImageLoadingListener = new AnimateImageLoadingListener();
+    }
+
+
+    private void setAnimation(final View view, int position)
+    {
+        if(mAnimationEnabled && position > mAnimationPosition)
+        {
+            view.setScaleX(0F);
+            view.setScaleY(0F);
+            view.animate()
+                    .scaleX(1F)
+                    .scaleY(1F)
+                    .setDuration(300)
+                    .setInterpolator(new DecelerateInterpolator());
+
+            mAnimationPosition = position;
         }
-        Item item = (Item) getItem(position);
-        TextView titleView = (TextView) view.findViewById(R.id.textTitle);
-        TextView summaryView = (TextView) view.findViewById(R.id.textSummary);
-        ImageView iv = (ImageView) view.findViewById(R.id.imageView);
+    }
 
-        titleView.setText(item.title);
-        summaryView.setText(item.summary);
-        if (item.image != null) {
-            iv.setImageBitmap(item.image);
-        } else {
-            iv.setImageDrawable(mContext.getResources().getDrawable(R.drawable.ic_noimage));
+
+    private void setItemMargins(View view, int position)
+    {
+        int marginTop = 0;
+
+        if(position < mGridSpanCount)
+        {
+            TypedArray a = CookbookApplication.getContext().obtainStyledAttributes(null, new int[]{android.R.attr.actionBarSize}, 0, 0);
+            marginTop = (int) a.getDimension(0, 0);
+            a.recycle();
         }
-        return view;
+
+        ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
+        marginParams.setMargins(0, marginTop, 0, 0);
     }
 
-    @Override
-    public int getViewTypeCount() {
-        return 1;
+
+    public static final class RecipeViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener
+    {
+        private TextView mNameTextView;
+        private ImageView mImageView;
+        private OnItemClickListener mListener;
+        private ImageLoader mImageLoader;
+        private DisplayImageOptions mDisplayImageOptions;
+        private ImageLoadingListener mImageLoadingListener;
+
+
+        public interface OnItemClickListener
+        {
+            void onItemClick(View view, int position, long id, int viewType);
+        }
+
+
+        public RecipeViewHolder(View itemView, OnItemClickListener listener, ImageLoader imageLoader, DisplayImageOptions displayImageOptions, ImageLoadingListener imageLoadingListener)
+        {
+            super(itemView);
+            mListener = listener;
+            mImageLoader = imageLoader;
+            mDisplayImageOptions = displayImageOptions;
+            mImageLoadingListener = imageLoadingListener;
+
+            // set listener
+            itemView.setOnClickListener(this);
+
+            // find views
+            mNameTextView = itemView.findViewById(R.id.fragment_recipe_list_item_name);
+            mImageView = itemView.findViewById(R.id.fragment_recipe_list_item_image);
+        }
+
+
+        @Override
+        public void onClick(View view)
+        {
+            int position = getAdapterPosition();
+            if(position != RecyclerView.NO_POSITION)
+            {
+                mListener.onItemClick(view, position, getItemId(), getItemViewType());
+            }
+        }
+
+
+        public void bindData(RecipeModel recipe)
+        {
+            mNameTextView.setText(recipe.getName());
+            mImageLoader.displayImage(recipe.getImage(), mImageView, mDisplayImageOptions, mImageLoadingListener);
+        }
     }
 
-    @Override
-    public boolean hasStableIds() {
-        return false;
-    }
 
-    @Override
-    public boolean isEmpty() {
-        return mItems.isEmpty();
-    }
+    public static final class FooterViewHolder extends RecyclerView.ViewHolder
+    {
+        public FooterViewHolder(View itemView)
+        {
+            super(itemView);
+        }
 
-    @Override
-    public void registerDataSetObserver(DataSetObserver observer) {
-        mObserver = observer;
-    }
 
-    @Override
-    public void unregisterDataSetObserver(DataSetObserver observer) {
-        mObserver = null;
-    }
-
-    @Override
-    public boolean areAllItemsEnabled() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled(int position) {
-        return true;
-    }
-
-    public String getItemName(int position) {
-        return mItems.get(position).name;
+        public void bindData(Object object)
+        {
+            // do nothing
+        }
     }
 }

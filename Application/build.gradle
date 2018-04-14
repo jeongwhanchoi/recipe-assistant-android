@@ -6,7 +6,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.1.0'
+        classpath 'com.android.tools.build:gradle:3.1.1'
     }
 }
 
@@ -18,10 +18,28 @@ repositories {
 }
 
 dependencies {
-    compile 'com.android.support:support-v4:27.0.2'
-    compile 'com.android.support:support-v13:27.0.2'
-    compile 'com.android.support:cardview-v7:27.0.2'
-    compile 'com.android.support:appcompat-v7:27.0.2'
+
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+//    implementation (name:"config", ext:"aar")
+    //noinspection GradleCompatible
+    implementation "com.android.support:support-compat:27.1.1"
+    implementation "com.android.support:support-core-utils:27.1.1"
+    implementation "com.android.support:support-core-ui:27.1.1"
+    implementation "com.android.support:support-fragment:27.1.1"
+    implementation "com.android.support:appcompat-v7:27.1.1"
+    implementation "com.android.support:cardview-v7:27.1.1"
+    implementation "com.android.support:recyclerview-v7:27.1.1"
+    implementation "com.android.support:design:27.1.1"
+    implementation "com.google.android.gms:play-services-base:15.0.0"
+    implementation "com.google.android.gms:play-services-analytics:15.0.0"
+    implementation "com.google.android.gms:play-services-ads:15.0.0"
+    implementation "com.bignerdranch.android:recyclerview-multiselect:0.2"
+    implementation "com.j256.ormlite:ormlite-android:5.0"
+    implementation "com.melnykov:floatingactionbutton:1.2.0"
+    implementation "com.nostra13.universalimageloader:universal-image-loader:1.9.5"
+    implementation "org.alfonz:alfonz-utility:0.8.0"
+    implementation "org.alfonz:alfonz-view:0.8.0"
+    implementation "se.emilsjolander:StickyScrollViewItems:1.1.0"
 }
 
 // The sample build uses multiple directories to
